@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Project Tensei — Config assistant</title>
+<style>
+  :root {
+    --paper:#f7f5f2; --paper-2:#fbfaf8; --ink:#23201c; --ink-soft:#6f6a63; --ink-faint:#a8a29a;
+    --line:#e7e3dd; --accent:#b5763a; --ai:#4a6b6f; --ai-soft:#e7eeee; --human:#6a5a86;
+    --ok:#6f8f6a; --ok-soft:#e4ede2; --ok-line:#cadfc6;
+    --warn:#a9702f; --warn-soft:#f6ead7; --warn-line:#e6cfa6;
+    --q:#4a6b6f; --q-soft:#e7eeee; --q-line:#bcd0d0;
+    font-size:16px;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; }
+  body {
+    background:var(--paper); color:var(--ink);
+    font-family:"Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:660px; margin:0 auto; padding:40px 40px 90px; }
+
+  .crumb { font-size:0.74rem; color:var(--ink-faint); margin-bottom:4px; }
+  .crumb b { color:var(--ink-soft); font-weight:600; }
+  h1 { font-size:1.3rem; margin:0 0 2px; }
+  .sub { font-size:0.86rem; color:var(--ink-soft); margin:0 0 20px; }
+
+  /* ---------- top suggestions / chat box ---------- */
+  .assistant { border:1px solid var(--line); border-radius:14px; background:var(--paper-2); margin-bottom:22px; overflow:hidden; }
+  .assistant-bar { display:flex; align-items:center; gap:11px; padding:14px 18px; cursor:pointer; user-select:none; }
+  .assistant-bar .spark { width:26px; height:26px; border-radius:8px; background:var(--ai-soft); color:var(--ai); display:grid; place-items:center; font-size:0.9rem; flex:none; }
+  .assistant-bar .a-title { font-size:0.9rem; font-weight:600; }
+  .assistant-bar .a-sub { font-size:0.78rem; color:var(--ink-soft); }
+  .assistant-bar .chev { margin-left:auto; color:var(--ink-faint); transition:transform .2s ease; }
+  .assistant.open .assistant-bar .chev { transform:rotate(90deg); }
+
+  .chat { display:none; border-top:1px solid var(--line); padding:16px 18px; }
+  .assistant.open .chat { display:block; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .chip { font:inherit; font-size:0.78rem; color:var(--ai); background:#fff; border:1px solid var(--q-line); border-radius:999px; padding:6px 12px; cursor:pointer; }
+  .chip:hover { background:var(--ai-soft); }
+  .msgs { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+  .bubble { max-width:88%; font-size:0.85rem; padding:10px 13px; border-radius:12px; }
+  .bubble.user { align-self:flex-end; background:#efece7; color:var(--ink); border-bottom-right-radius:4px; }
+  .bubble.ai { align-self:flex-start; background:var(--ai-soft); color:#2f4749; border-bottom-left-radius:4px; }
+  .bubble.ai .rec { margin-top:8px; font-size:0.8rem; }
+  .bubble.ai .rec li { margin:2px 0; }
+  .apply { font:inherit; font-size:0.76rem; font-weight:600; margin-top:10px; background:var(--ai); color:#fff; border:none; border-radius:8px; padding:6px 13px; cursor:pointer; }
+  .chat-input { display:flex; gap:8px; }
+  .chat-input input { flex:1; font:inherit; font-size:0.85rem; padding:9px 12px; border:1px solid var(--line); border-radius:9px; background:#fff; }
+  .chat-input input:focus { outline:none; border-color:var(--ai); box-shadow:0 0 0 3px rgba(74,107,111,.12); }
+  .chat-input button { font:inherit; font-size:0.85rem; font-weight:600; background:var(--ink); color:#fff; border:none; border-radius:9px; padding:9px 16px; cursor:pointer; }
+
+  /* ---------- config form ---------- */
+  .form { background:var(--paper-2); border:1px solid var(--line); border-radius:14px; padding:6px 20px; }
+  .field { padding:18px 0; border-bottom:1px solid var(--line); }
+  .field:last-child { border-bottom:none; }
+  .f-label { font-size:0.9rem; font-weight:600; }
+  .f-desc { font-size:0.77rem; color:var(--ink-soft); margin:2px 0 10px; }
+  .f-input-row { display:flex; align-items:center; gap:10px; }
+  input[type="number"], select {
+    font:inherit; font-size:0.9rem; padding:8px 11px; border:1px solid var(--line);
+    border-radius:9px; background:#fff; color:var(--ink); width:120px;
+  }
+  select { width:auto; min-width:210px; }
+  input:focus, select:focus { outline:none; border-color:var(--ai); box-shadow:0 0 0 3px rgba(74,107,111,.12); }
+  .unit { font-size:0.82rem; color:var(--ink-soft); }
+
+  /* the status box at the end of the line — the core of the idea */
+  .ind {
+    margin-left:auto; width:28px; height:28px; border-radius:8px; flex:none;
+    font-size:0.95rem; font-weight:700; cursor:pointer; border:1px solid transparent;
+    display:grid; place-items:center; transition:transform .1s ease;
+  }
+  .ind:hover { transform:scale(1.08); }
+  .ind.warn { background:var(--warn-soft); border-color:var(--warn-line); color:var(--warn); }
+  .ind.ok   { background:var(--ok-soft);  border-color:var(--ok-line);  color:var(--ok); }
+  .ind.q    { background:var(--q-soft);   border-color:var(--q-line);   color:var(--q); }
+
+  /* the panel that expands when you click the box */
+  .detail { display:none; margin-top:12px; border-radius:10px; padding:12px 14px; font-size:0.83rem; animation:rise .2s ease; }
+  .detail.show { display:block; }
+  .detail.warn { background:var(--warn-soft); border:1px solid var(--warn-line); color:#7c531f; }
+  .detail.ok   { background:var(--ok-soft);   border:1px solid var(--ok-line);   color:#3f6b3a; }
+  .detail.q    { background:var(--q-soft);     border:1px solid var(--q-line);    color:#2f4749; }
+  @keyframes rise { from { opacity:0; transform:translateY(4px);} to { opacity:1; transform:none; } }
+  .detail .d-head { font-weight:700; display:flex; align-items:center; gap:7px; margin-bottom:4px; }
+  .detail .fix { font:inherit; font-size:0.77rem; font-weight:600; margin-top:10px; background:#fff; border:1px solid currentColor; border-radius:8px; padding:5px 12px; cursor:pointer; color:inherit; }
+  .detail .fix:hover { filter:brightness(0.98); }
+  .detail .src { font-size:0.68rem; opacity:0.8; margin-top:8px; text-transform:uppercase; letter-spacing:0.05em; }
+
+  .footer { margin-top:22px; display:flex; align-items:center; gap:12px; }
+  .save { font:inherit; font-size:0.86rem; font-weight:600; background:var(--accent); color:#fff; border:none; border-radius:9px; padding:10px 20px; cursor:pointer; }
+  .saveMsg { font-size:0.8rem; }
+  .footnote { font-size:0.76rem; color:var(--ink-faint); margin-top:24px; text-align:center; }
+  .legend { display:flex; justify-content:center; gap:16px; margin-top:14px; font-size:0.74rem; color:var(--ink-soft); }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .legend b { width:18px; height:18px; border-radius:6px; display:grid; place-items:center; font-size:0.72rem; }
+  .legend .lg-warn { background:var(--warn-soft); color:var(--warn); border:1px solid var(--warn-line); }
+  .legend .lg-q { background:var(--q-soft); color:var(--q); border:1px solid var(--q-line); }
+  .legend .lg-ok { background:var(--ok-soft); color:var(--ok); border:1px solid var(--ok-line); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="crumb"><b>EKS</b> › prod-eks-1 › payments-service › <b>Edit deployment</b></div>
+    <h1>Deployment settings</h1>
+    <p class="sub">Your assistant checks each setting against AWS best practices and your account's own history. Click any status box to see what it found.</p>
+
+    <!-- TOP: describe-what-you're-building chat -->
+    <div class="assistant" id="assistant">
+      <div class="assistant-bar" id="assistantBar">
+        <span class="spark">✳</span>
+        <div>
+          <div class="a-title">Not sure what to set?</div>
+          <div class="a-sub">Describe what you're deploying and I'll suggest safe defaults for your environment.</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+      <div class="chat">
+        <div class="chips">
+          <button class="chip" data-preset="public">A public web API</button>
+          <button class="chip" data-preset="internal">An internal microservice</button>
+          <button class="chip" data-preset="hightraffic">A high-traffic payments service</button>
+        </div>
+        <div class="msgs" id="msgs"></div>
+        <div class="chat-input">
+          <input type="text" id="chatText" placeholder="e.g. a low-traffic internal admin tool" />
+          <button id="chatSend">Ask</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIG FORM -->
+    <div class="form" id="form">
+
+      <div class="field">
+        <div class="f-label">Readiness probe — timeout</div>
+        <div class="f-desc">How long to wait for the app to answer a health check before restarting it.</div>
+        <div class="f-input-row">
+          <input type="number" id="timeout" value="5" min="1" max="60" />
+          <span class="unit">seconds</span>
+          <button class="ind" id="timeout-ind" data-field="timeout"></button>
+        </div>
+        <div class="detail" id="timeout-detail"></div>
+      </div>
+
+      <div class="field">
+        <div class="f-label">Desired replicas</div>
+        <div class="f-desc">How many copies of the app run at once.</div>
+        <div class="f-input-row">
+          <input type="number" id="replicas" value="3" min="1" max="20" />
+          <span class="unit">pods</span>
+          <button class="ind" id="replicas-ind" data-field="replicas"></button>
+        </div>
+        <div class="detail" id="replicas-detail"></div>
+      </div>
+
+      <div class="field">
+        <div class="f-label">Allowed source</div>
+        <div class="f-desc">Who can reach this service's admin port.</div>
+        <div class="f-input-row">
+          <select id="source">
+            <option value="">— choose —</option>
+            <option value="vpc">Within your VPC only</option>
+            <option value="office">Office IP range</option>
+            <option value="open">Anywhere (0.0.0.0/0)</option>
+          </select>
+          <button class="ind" id="source-ind" data-field="source"></button>
+        </div>
+        <div class="detail" id="source-detail"></div>
+      </div>
+
+    </div>
+
+    <div class="legend">
+      <span><b class="lg-warn">!</b> risky</span>
+      <span><b class="lg-q">?</b> want a suggestion</span>
+      <span><b class="lg-ok">✓</b> looks safe</span>
+    </div>
+
+    <div class="footer">
+      <button class="save" id="save">Save deployment</button>
+      <span class="saveMsg" id="saveMsg"></span>
+    </div>
+
+    <p class="footnote">Your assistant flags risky settings, confirms the safe ones, and suggests values when you're unsure — before anything reaches production.</p>
+  </div>
+
+  <script>
+    // ---------- field knowledge ----------
+    const fields = {
+      timeout: {
+        type:'number', safe:5,
+        risky:v => v < 3,
+        whyRisky:'Under 3s, your pods restart before they finish starting up — that\'s what triggers a crash-loop.',
+        suggest:'For a service like yours, <b>5s</b> is the safe choice — it gives your app time to warm up before its first health check.',
+        whySafe:'At 5s your app has time to answer its first health check, so healthy pods won\'t get killed by mistake.',
+        src:'Common across AWS'
+      },
+      replicas: {
+        type:'number', safe:3,
+        risky:v => v < 2,
+        whyRisky:'With fewer than 2, you have no backup — if one pod dies, your whole service goes down with it.',
+        suggest:'Run at least <b>3</b> so your service keeps serving even if a pod or node fails.',
+        whySafe:'With 3 replicas, your service stays up even if one pod or node fails.',
+        src:'From your account · Mar 3 outage'
+      },
+      source: {
+        type:'select', safe:'vpc',
+        risky:v => v === 'open',
+        whyRisky:'Opening your admin port to the whole internet (0.0.0.0/0) is the most common cause of the breaches we see across AWS.',
+        suggest:'Keep access <b>within your VPC</b> unless you genuinely need to reach it from outside.',
+        whySafe:'Access stays scoped to your trusted networks, not exposed to the open internet.',
+        src:'Common across AWS'
+      }
+    };
+
+    function raw(id) {
+      const el = document.getElementById(id);
+      return fields[id].type === 'number' ? Number(el.value) : el.value;
+    }
+    function isEmpty(id) {
+      const el = document.getElementById(id);
+      return el.value === '';
+    }
+
+    function stateOf(id) {
+      if (isEmpty(id)) return 'q';
+      return fields[id].risky(raw(id)) ? 'warn' : 'ok';
+    }
+
+    const ICON = { warn:'!', q:'?', ok:'✓' };
+
+    function paintIndicator(id) {
+      const ind = document.getElementById(id + '-ind');
+      const st = stateOf(id);
+      ind.className = 'ind ' + st;
+      ind.textContent = ICON[st];
+      ind.setAttribute('aria-label',
+        st === 'warn' ? 'risky value — click for details' :
+        st === 'q' ? 'want a suggestion?' : 'looks safe — click for details');
+    }
+
+    function detailContent(id) {
+      const f = fields[id];
+      const st = stateOf(id);
+      const safeLabel = f.type === 'select' ? 'Within your VPC only' : f.safe;
+      if (st === 'warn') {
+        return `<div class="d-head">⚠ This could cause problems</div>
+          <div>${f.whyRisky}</div>
+          <button class="fix" data-target="${id}">Change to ${safeLabel}</button>
+          <div class="src">${f.src}</div>`;
+      }
+      if (st === 'q') {
+        return `<div class="d-head">? Here's what I'd suggest</div>
+          <div>${f.suggest}</div>
+          <button class="fix" data-target="${id}">Use ${safeLabel}</button>
+          <div class="src">${f.src}</div>`;
+      }
+      return `<div class="d-head">✓ This looks safe</div>
+        <div>${f.whySafe}</div>
+        <div class="src">${f.src}</div>`;
+    }
+
+    function paintDetail(id) {
+      const d = document.getElementById(id + '-detail');
+      const st = stateOf(id);
+      d.className = 'detail ' + st + (d.classList.contains('show') ? ' show' : '');
+      d.innerHTML = detailContent(id);
+    }
+
+    function refresh(id) {
+      paintIndicator(id);
+      if (document.getElementById(id + '-detail').classList.contains('show')) {
+        paintDetail(id);
+      }
+    }
+
+    // wire indicators (click to expand/collapse the panel)
+    Object.keys(fields).forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('input', () => refresh(id));
+      el.addEventListener('change', () => refresh(id));
+
+      document.getElementById(id + '-ind').addEventListener('click', () => {
+        const d = document.getElementById(id + '-detail');
+        const willShow = !d.classList.contains('show');
+        paintDetail(id);
+        d.classList.toggle('show', willShow);
+      });
+
+      paintIndicator(id);
+    });
+
+    // "change to / use" buttons inside the detail panels
+    document.getElementById('form').addEventListener('click', (e) => {
+      const btn = e.target.closest('.fix');
+      if (!btn) return;
+      const id = btn.dataset.target;
+      document.getElementById(id).value = fields[id].safe;
+      paintDetail(id);
+      paintIndicator(id);
+    });
+
+    // ---------- top chat assistant ----------
+    const assistant = document.getElementById('assistant');
+    document.getElementById('assistantBar').addEventListener('click', () => assistant.classList.toggle('open'));
+
+    const recipes = {
+      public:      { label:'a public web API',            timeout:5, replicas:3, source:'office',
+                     note:'Public reach, but keep the admin port off the open internet.' },
+      internal:    { label:'an internal microservice',    timeout:5, replicas:2, source:'vpc',
+                     note:'No public exposure needed, so lock it to your VPC.' },
+      hightraffic: { label:'a high-traffic payments service', timeout:5, replicas:5, source:'vpc',
+                     note:'More replicas to absorb load, private access for safety.' },
+      default:     { label:'that',                          timeout:5, replicas:3, source:'vpc',
+                     note:'Safe, general-purpose defaults you can adjust from here.' }
+    };
+
+    function pickRecipe(text) {
+      const t = text.toLowerCase();
+      if (/public|internet|external|customer facing|website|api/.test(t)) return recipes.public;
+      if (/high|traffic|scale|busy|payments|load/.test(t)) return recipes.hightraffic;
+      if (/internal|private|admin|back ?office|tool/.test(t)) return recipes.internal;
+      return recipes.default;
+    }
+
+    const msgs = document.getElementById('msgs');
+    function addBubble(cls, html) {
+      const b = document.createElement('div');
+      b.className = 'bubble ' + cls;
+      b.innerHTML = html;
+      msgs.appendChild(b);
+      msgs.parentElement.scrollTop = msgs.parentElement.scrollHeight;
+      return b;
+    }
+
+    function respond(userText, recipe) {
+      addBubble('user', userText);
+      const srcLabel = { vpc:'within your VPC', office:'your office IP range', open:'anywhere' }[recipe.source];
+      const html = `For <b>${recipe.label}</b> in your account, here's a safe starting point:
+        <ul class="rec">
+          <li>Probe timeout: <b>${recipe.timeout}s</b></li>
+          <li>Replicas: <b>${recipe.replicas}</b></li>
+          <li>Allowed source: <b>${srcLabel}</b></li>
+        </ul>
+        <div style="font-size:0.78rem;opacity:.85;">${recipe.note}</div>
+        <button class="apply" data-recipe='${JSON.stringify({timeout:recipe.timeout,replicas:recipe.replicas,source:recipe.source})}'>Apply these defaults</button>`;
+      addBubble('ai', html);
+    }
+
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const r = recipes[chip.dataset.preset];
+        respond(chip.textContent, r);
+      });
+    });
+    function sendText() {
+      const input = document.getElementById('chatText');
+      const text = input.value.trim();
+      if (!text) return;
+      respond(text, pickRecipe(text));
+      input.value = '';
+    }
+    document.getElementById('chatSend').addEventListener('click', sendText);
+    document.getElementById('chatText').addEventListener('keydown', e => { if (e.key === 'Enter') sendText(); });
+
+    // apply defaults from a chat recommendation
+    msgs.addEventListener('click', (e) => {
+      const btn = e.target.closest('.apply');
+      if (!btn) return;
+      const rec = JSON.parse(btn.dataset.recipe);
+      document.getElementById('timeout').value = rec.timeout;
+      document.getElementById('replicas').value = rec.replicas;
+      document.getElementById('source').value = rec.source;
+      Object.keys(fields).forEach(refresh);
+      btn.textContent = 'Applied ✓';
+      btn.disabled = true;
+      document.getElementById('form').scrollIntoView({ behavior:'smooth', block:'center' });
+    });
+
+    // ---------- save ----------
+    document.getElementById('save').addEventListener('click', () => {
+      const risky = Object.keys(fields).filter(id => !isEmpty(id) && fields[id].risky(raw(id)));
+      const empty = Object.keys(fields).filter(isEmpty);
+      const msg = document.getElementById('saveMsg');
+      if (risky.length) {
+        msg.style.color = '#9c4a34';
+        msg.textContent = 'Heads up — ' + risky.length + ' risky value still needs a look.';
+      } else if (empty.length) {
+        msg.style.color = '#a9702f';
+        msg.textContent = 'Still ' + empty.length + ' field to set. Click the ? for a suggestion.';
+      } else {
+        msg.style.color = '#6f8f6a';
+        msg.textContent = '✓ Saved with safe settings.';
+      }
+    });
+  </script>
+</body>
+</html>

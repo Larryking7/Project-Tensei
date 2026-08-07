@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Project Tensei — Smart default suggestor</title>
+<style>
+  :root {
+    --paper:#f7f5f2; --paper-2:#fbfaf8; --ink:#23201c; --ink-soft:#6f6a63; --ink-faint:#a8a29a;
+    --line:#e7e3dd; --accent:#b5763a; --ai:#4a6b6f; --human:#6a5a86;
+    --ok:#6f8f6a; --ok-soft:#e4ede2;
+    --warn:#a9702f; --warn-soft:#f6ead7; --warn-line:#e6cfa6;
+    --bad:#9c4a34; --bad-soft:#f4e0da; --bad-line:#e6c6bc;
+    font-size:16px;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; }
+  body {
+    background:var(--paper); color:var(--ink);
+    font-family:"Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:640px; margin:0 auto; padding:44px 40px 90px; }
+
+  /* mock console breadcrumb + header */
+  .crumb { font-size:0.74rem; color:var(--ink-faint); margin-bottom:4px; }
+  .crumb b { color:var(--ink-soft); font-weight:600; }
+  h1 { font-size:1.3rem; margin:0 0 2px; }
+  .sub { font-size:0.86rem; color:var(--ink-soft); margin:0 0 26px; }
+
+  .form { background:var(--paper-2); border:1px solid var(--line); border-radius:14px; padding:8px 22px; }
+  .field { padding:20px 0; border-bottom:1px solid var(--line); }
+  .field:last-child { border-bottom:none; }
+  .f-label { font-size:0.9rem; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .f-desc { font-size:0.78rem; color:var(--ink-soft); margin:2px 0 10px; }
+
+  .f-input-row { display:flex; align-items:center; gap:10px; }
+  input[type="number"], select {
+    font:inherit; font-size:0.9rem; padding:8px 11px; border:1px solid var(--line);
+    border-radius:9px; background:#fff; color:var(--ink); width:120px;
+  }
+  select { width:auto; min-width:220px; }
+  input:focus, select:focus { outline:none; border-color:var(--ai); box-shadow:0 0 0 3px rgba(74,107,111,.12); }
+  .unit { font-size:0.82rem; color:var(--ink-soft); }
+
+  /* the suggested-default chip — always visible, quietly guiding */
+  .suggest {
+    display:inline-flex; align-items:center; gap:7px; margin-left:6px;
+    font-size:0.74rem; color:var(--ok); background:var(--ok-soft);
+    border:1px solid #cadfc6; border-radius:999px; padding:3px 10px;
+    cursor:pointer; transition:opacity .15s ease;
+  }
+  .suggest .dot { width:6px; height:6px; border-radius:50%; background:var(--ok); }
+  .suggest.hide { display:none; }
+
+  .source { font-size:0.68rem; color:var(--ink-faint); margin-top:9px; display:flex; align-items:center; gap:6px; }
+  .source .tag { border:1px solid var(--line); border-radius:999px; padding:1px 8px; letter-spacing:0.04em; text-transform:uppercase; font-size:0.62rem; }
+  .source .tag.shared { color:var(--ai); border-color:#bcd0d0; background:#eef3f3; }
+  .source .tag.personal { color:var(--human); border-color:#d2c7e0; background:#f0ecf6; }
+
+  /* inline caution — appears only when the value is risky. calm, not a popup. */
+  .caution {
+    display:none; margin-top:12px; border-radius:10px; padding:11px 13px;
+    font-size:0.82rem; align-items:flex-start; gap:10px;
+    background:var(--warn-soft); border:1px solid var(--warn-line); color:#7c531f;
+    animation:rise .25s ease;
+  }
+  .caution.show { display:flex; }
+  .caution.danger { background:var(--bad-soft); border-color:var(--bad-line); color:#7d3a28; }
+  @keyframes rise { from { opacity:0; transform:translateY(4px);} to { opacity:1; transform:none; } }
+  .caution .c-ico { flex:none; font-size:0.95rem; line-height:1.3; }
+  .caution .c-body { flex:1; }
+  .caution .c-why { display:block; }
+  .caution .fix {
+    font:inherit; font-size:0.76rem; font-weight:600; margin-top:9px;
+    background:#fff; border:1px solid var(--warn-line); color:#7c531f;
+    border-radius:8px; padding:5px 12px; cursor:pointer;
+  }
+  .caution.danger .fix { border-color:var(--bad-line); color:#7d3a28; }
+  .caution .fix:hover { background:#fffdf8; }
+
+  /* good-state tick */
+  .good { display:none; margin-top:10px; font-size:0.78rem; color:var(--ok); align-items:center; gap:7px; }
+  .good.show { display:flex; }
+  .good .dot { width:7px; height:7px; border-radius:50%; background:var(--ok); }
+
+  .footer { margin-top:24px; display:flex; align-items:center; gap:12px; }
+  .save { font:inherit; font-size:0.86rem; font-weight:600; background:var(--accent); color:#fff; border:none; border-radius:9px; padding:10px 20px; cursor:pointer; }
+  .footnote { font-size:0.78rem; color:var(--ink-faint); margin-top:26px; text-align:center; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="crumb"><b>EKS</b> › prod-eks-1 › payments-service › <b>Edit deployment</b></div>
+    <h1>Deployment settings</h1>
+    <p class="sub">Fields come pre-filled with the safe choice. Change one to something risky and you'll see why before you save.</p>
+
+    <div class="form">
+
+      <!-- FIELD 1: the star — readiness probe timeout -->
+      <div class="field">
+        <div class="f-label">Readiness probe — timeout</div>
+        <div class="f-desc">How long to wait for the app to answer a health check before restarting it.</div>
+        <div class="f-input-row">
+          <input type="number" id="timeout" value="5" min="1" max="60" />
+          <span class="unit">seconds</span>
+          <span class="suggest hide" id="timeout-suggest"><span class="dot"></span> Suggested: 5s · use it</span>
+        </div>
+        <div class="source"><span class="tag shared">Common across AWS</span> most production setups use 5s here</div>
+        <div class="caution" id="timeout-caution">
+          <span class="c-ico">⚠</span>
+          <div class="c-body">
+            <span class="c-why" id="timeout-why">Values under 3s cause crash-loops — pods restart before they finish starting up.</span>
+            <button class="fix" data-target="timeout" data-safe="5">Use 5s</button>
+          </div>
+        </div>
+        <div class="good" id="timeout-good"><span class="dot"></span> Good — this is the safe default.</div>
+      </div>
+
+      <!-- FIELD 2: replicas -->
+      <div class="field">
+        <div class="f-label">Desired replicas</div>
+        <div class="f-desc">How many copies of the app run at once.</div>
+        <div class="f-input-row">
+          <input type="number" id="replicas" value="3" min="1" max="20" />
+          <span class="unit">pods</span>
+          <span class="suggest hide" id="replicas-suggest"><span class="dot"></span> Suggested: 3 · use it</span>
+        </div>
+        <div class="source"><span class="tag personal">From your March incident</span> a single replica took payments down when one node failed</div>
+        <div class="caution" id="replicas-caution">
+          <span class="c-ico">⚠</span>
+          <div class="c-body">
+            <span class="c-why">Fewer than 2 means no backup — if one pod dies, the service goes down with it.</span>
+            <button class="fix" data-target="replicas" data-safe="3">Use 3</button>
+          </div>
+        </div>
+        <div class="good" id="replicas-good"><span class="dot"></span> Good — leaves room to survive a failure.</div>
+      </div>
+
+      <!-- FIELD 3: source access (security, stronger caution) -->
+      <div class="field">
+        <div class="f-label">Allowed source</div>
+        <div class="f-desc">Who can reach this service's admin port.</div>
+        <div class="f-input-row">
+          <select id="source">
+            <option value="vpc">Within your VPC only</option>
+            <option value="office">Office IP range</option>
+            <option value="open">Anywhere (0.0.0.0/0)</option>
+          </select>
+        </div>
+        <div class="source"><span class="tag shared">Common across AWS</span> the #1 cause of exposure incidents is an admin port left open to everyone</div>
+        <div class="caution danger" id="source-caution">
+          <span class="c-ico">⛔</span>
+          <div class="c-body">
+            <span class="c-why">Opening the admin port to the whole internet is the most common cause of breaches we see.</span>
+            <button class="fix" data-target="source" data-safe="vpc">Restrict to VPC</button>
+          </div>
+        </div>
+        <div class="good" id="source-good"><span class="dot"></span> Good — access is scoped, not open to the internet.</div>
+      </div>
+
+    </div>
+
+    <div class="footer">
+      <button class="save" id="save">Save deployment</button>
+      <span class="footnote" id="saveMsg" style="margin:0;"></span>
+    </div>
+
+    <p class="footnote">Proactive by design: safe defaults up front, a quiet reason beside each field, and a warning only when a value is genuinely risky.</p>
+  </div>
+
+  <script>
+    // --- field rules: what's safe, and when to caution ---
+    const rules = {
+      timeout:  { type:'number', risky:v => v < 3, safe:5 },
+      replicas: { type:'number', risky:v => v < 2, safe:3 },
+      source:   { type:'select', risky:v => v === 'open', safe:'vpc' },
+    };
+
+    function evaluate(id) {
+      const el = document.getElementById(id);
+      const rule = rules[id];
+      const caution = document.getElementById(id + '-caution');
+      const good = document.getElementById(id + '-good');
+      const suggest = document.getElementById(id + '-suggest');
+
+      const raw = rule.type === 'number' ? Number(el.value) : el.value;
+      const isRisky = rule.risky(raw);
+      const isSafeDefault = raw == rule.safe;
+
+      caution.classList.toggle('show', isRisky);
+      // show the little "use suggested" chip whenever the value isn't the safe default
+      suggest.classList.toggle('hide', isSafeDefault);
+      // green tick only when it's exactly the safe default
+      good.classList.toggle('show', isSafeDefault);
+    }
+
+    // wire up inputs
+    Object.keys(rules).forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('input', () => evaluate(id));
+      el.addEventListener('change', () => evaluate(id));
+      evaluate(id); // initial state
+    });
+
+    // "use safe default" buttons (in the caution boxes)
+    document.querySelectorAll('.fix').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.target;
+        document.getElementById(id).value = btn.dataset.safe;
+        evaluate(id);
+      });
+    });
+
+    // "use it" suggestion chips
+    document.querySelectorAll('.suggest').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const id = chip.id.replace('-suggest','');
+        document.getElementById(id).value = rules[id].safe;
+        evaluate(id);
+      });
+    });
+
+    // save — block if anything is still risky
+    document.getElementById('save').addEventListener('click', () => {
+      const risky = Object.keys(rules).filter(id => {
+        const el = document.getElementById(id);
+        const raw = rules[id].type === 'number' ? Number(el.value) : el.value;
+        return rules[id].risky(raw);
+      });
+      const msg = document.getElementById('saveMsg');
+      if (risky.length) {
+        msg.style.color = '#9c4a34';
+        msg.textContent = 'Heads up — ' + risky.length + ' risky setting still needs a look before this ships.';
+      } else {
+        msg.style.color = '#6f8f6a';
+        msg.textContent = '✓ Saved with safe settings.';
+      }
+    });
+  </script>
+</body>
+</html>

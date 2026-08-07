@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Config Assistant — component (YAML manifest view)</title>
+  <!-- Merge step 1: link this stylesheet (or paste its contents into the shared CSS) -->
+  <link rel="stylesheet" href="config-assistant.css" />
+  <style>
+    /* preview page chrome only — NOT part of the component */
+    body { margin:0; background:#f7f5f2; padding:44px 20px 80px; }
+  </style>
+</head>
+<body>
+
+  <!-- ======================================================================
+       COMPONENT START — copy everything from <section> to </section> into the
+       combined page where the config-assistant section should appear.
+       The YAML editor + finding panel are rendered by the script into the
+       marked containers.
+       ====================================================================== -->
+  <section class="ca-root" aria-label="Configuration assistant">
+
+    <div class="ca-crumb"><b>EKS</b> &rsaquo; prod-eks-1 &rsaquo; Resources &rsaquo; <b>ml-training</b></div>
+    <div class="ca-h1">Deploy to GPU node group</div>
+    <p class="ca-sub">Your assistant checked this manifest against the nodes it's headed for. Click <b>Insert toleration</b> if you want it added.</p>
+
+    <!-- context banner: the assistant already knows the target nodes are tainted -->
+    <div class="ca-context">
+      <span class="ca-context-ico">&#9673;</span>
+      <div>
+        <b>Target: GPU node group</b> &middot; these nodes are tainted
+        <code>dedicated=gpuGroup:NoSchedule</code>, set by the platform team.
+        Pods need a matching toleration to schedule here.
+      </div>
+    </div>
+
+    <!-- describe-what-you're-building chat -->
+    <div class="ca-assistant">
+      <div class="ca-bar">
+        <span class="ca-spark">&#10037;</span>
+        <div>
+          <div class="ca-a-title">Not sure what to set?</div>
+          <div class="ca-a-sub">Describe what you're deploying and I'll recommend a starter manifest for this node group.</div>
+        </div>
+        <span class="ca-chev">&rsaquo;</span>
+      </div>
+      <div class="ca-chat">
+        <div class="ca-chips">
+          <button class="ca-chip" type="button" data-ca-preset="training">A GPU training job</button>
+          <button class="ca-chip" type="button" data-ca-preset="inference">A GPU inference service</button>
+          <button class="ca-chip" type="button" data-ca-preset="batch">A batch job on the GPU nodes</button>
+        </div>
+        <div class="ca-msgs"></div>
+        <div class="ca-chat-input">
+          <input type="text" class="ca-chat-text" placeholder="e.g. a nightly model training run" />
+          <button type="button" class="ca-chat-send">Ask</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- YAML manifest editor (rendered by the script) -->
+    <div class="ca-editor-card">
+      <div class="ca-tabs">
+        <div class="ca-tab ca-tab-active">YAML</div>
+        <div class="ca-tab">Form</div>
+        <span class="ca-file">ml-training.deployment.yaml</span>
+      </div>
+      <div class="ca-editor" data-ca-editor></div>
+    </div>
+
+    <!-- assistant finding (rendered by the script) -->
+    <div class="ca-finding" data-ca-finding></div>
+
+    <div class="ca-footer">
+      <button class="ca-deploy" type="button">Deploy workload</button>
+      <span class="ca-deploy-msg" data-ca-deploy-msg></span>
+    </div>
+
+    <p class="ca-footnote">Your assistant reads this manifest against the target nodes and your account's history &mdash; flagging problems before they reach the cluster.</p>
+
+  </section>
+  <!-- ======================================================================
+       COMPONENT END
+       ====================================================================== -->
+
+  <!-- Merge step 2: include this script once (or paste its contents into the shared JS) -->
+  <script src="config-assistant.js"></script>
+</body>
+</html>

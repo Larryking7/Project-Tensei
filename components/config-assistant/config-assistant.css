@@ -1,0 +1,105 @@
+/* =============================================================================
+   Config Assistant — styles (YAML manifest view)
+   Project Tensei. Author: (config-assistant feature owner)
+
+   Every class is prefixed .ca- and every rule is scoped under .ca-root, so this
+   can be merged into the shared page without colliding with other components.
+   Theme tokens live on .ca-root — tweak them (or override from the combined
+   stylesheet) during the design session.
+   ============================================================================= */
+
+.ca-root {
+  /* theme tokens */
+  --ca-paper:#f7f5f2; --ca-paper-2:#fbfaf8; --ca-ink:#23201c; --ca-ink-soft:#6f6a63; --ca-ink-faint:#a8a29a;
+  --ca-line:#e7e3dd; --ca-accent:#b5763a; --ca-ai:#4a6b6f; --ca-ai-soft:#e7eeee;
+  --ca-ok:#6f8f6a; --ca-ok-soft:#e4ede2; --ca-ok-line:#cadfc6;
+  --ca-warn:#a9702f; --ca-warn-soft:#f6ead7; --ca-warn-line:#e6cfa6;
+  --ca-q-line:#bcd0d0;
+  /* yaml syntax */
+  --ca-y-key:#3f6368; --ca-y-str:#8a5a28; --ca-y-num:#7a6f45; --ca-y-com:#a8a29a; --ca-y-punct:#6f6a63;
+
+  max-width:760px; margin:0 auto;
+  font-family:"Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  color:var(--ca-ink); line-height:1.55; text-align:left;
+}
+.ca-root *, .ca-root *::before, .ca-root *::after { box-sizing:border-box; }
+.ca-mono { font-family:"SFMono-Regular",Consolas,monospace; }
+
+.ca-crumb { font-size:0.74rem; color:var(--ca-ink-faint); margin-bottom:4px; }
+.ca-crumb b { color:var(--ca-ink-soft); font-weight:600; }
+.ca-h1 { font-size:1.3rem; font-weight:700; margin:0 0 2px; }
+.ca-sub { font-size:0.86rem; color:var(--ca-ink-soft); margin:0 0 16px; }
+.ca-sub code, .ca-context code, .ca-finding code { font-family:"SFMono-Regular",Consolas,monospace; background:#efece7; padding:0 5px; border-radius:4px; font-size:0.85em; }
+
+/* context banner — the assistant's awareness of the target nodes */
+.ca-context { display:flex; align-items:flex-start; gap:10px; background:var(--ca-ai-soft); border:1px solid var(--ca-q-line); border-radius:12px; padding:12px 14px; margin-bottom:18px; font-size:0.82rem; color:#2f4749; }
+.ca-context-ico { color:var(--ca-ai); font-size:0.95rem; line-height:1.4; flex:none; }
+
+/* ---- describe-what-you're-building chat ---- */
+.ca-assistant { border:1px solid var(--ca-line); border-radius:14px; background:var(--ca-paper-2); margin-bottom:18px; overflow:hidden; }
+.ca-bar { display:flex; align-items:center; gap:11px; padding:14px 18px; cursor:pointer; user-select:none; }
+.ca-spark { width:26px; height:26px; border-radius:8px; background:var(--ca-ai-soft); color:var(--ca-ai); display:grid; place-items:center; font-size:0.9rem; flex:none; }
+.ca-a-title { font-size:0.9rem; font-weight:600; }
+.ca-a-sub { font-size:0.78rem; color:var(--ca-ink-soft); }
+.ca-chev { margin-left:auto; color:var(--ca-ink-faint); transition:transform .2s ease; }
+.ca-assistant.ca-open .ca-chev { transform:rotate(90deg); }
+.ca-chat { display:none; border-top:1px solid var(--ca-line); padding:16px 18px; }
+.ca-assistant.ca-open .ca-chat { display:block; }
+.ca-chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.ca-chip { font:inherit; font-size:0.78rem; color:var(--ca-ai); background:#fff; border:1px solid var(--ca-q-line); border-radius:999px; padding:6px 12px; cursor:pointer; }
+.ca-chip:hover { background:var(--ca-ai-soft); }
+.ca-msgs { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; max-height:260px; overflow-y:auto; }
+.ca-bubble { max-width:88%; font-size:0.85rem; padding:10px 13px; border-radius:12px; }
+.ca-bubble.ca-user { align-self:flex-end; background:#efece7; color:var(--ca-ink); border-bottom-right-radius:4px; }
+.ca-bubble.ca-ai { align-self:flex-start; background:var(--ca-ai-soft); color:#2f4749; border-bottom-left-radius:4px; }
+.ca-rec { margin:8px 0 0; padding-left:18px; font-size:0.8rem; }
+.ca-rec li { margin:2px 0; }
+.ca-note { font-size:0.78rem; opacity:.85; margin-top:4px; }
+.ca-apply { font:inherit; font-size:0.76rem; font-weight:600; margin-top:10px; background:var(--ca-ai); color:#fff; border:none; border-radius:8px; padding:6px 13px; cursor:pointer; }
+.ca-apply:disabled { opacity:.6; cursor:default; }
+.ca-chat-input { display:flex; gap:8px; }
+.ca-chat-text { flex:1; font:inherit; font-size:0.85rem; padding:9px 12px; border:1px solid var(--ca-line); border-radius:9px; background:#fff; color:var(--ca-ink); }
+.ca-chat-text:focus { outline:none; border-color:var(--ca-ai); box-shadow:0 0 0 3px rgba(74,107,111,.12); }
+.ca-chat-send { font:inherit; font-size:0.85rem; font-weight:600; background:var(--ca-ink); color:#fff; border:none; border-radius:9px; padding:9px 16px; cursor:pointer; }
+
+/* ---- YAML editor ---- */
+.ca-editor-card { border:1px solid var(--ca-line); border-radius:12px; background:var(--ca-paper-2); overflow:hidden; }
+.ca-tabs { display:flex; align-items:center; gap:2px; border-bottom:1px solid var(--ca-line); padding:0 10px; background:#f3f0ec; }
+.ca-tab { font-size:0.78rem; padding:9px 14px; color:var(--ca-ink-soft); cursor:default; border-bottom:2px solid transparent; }
+.ca-tab.ca-tab-active { color:var(--ca-ink); border-bottom-color:var(--ca-accent); font-weight:600; }
+.ca-tabs .ca-file { margin-left:auto; font-size:0.74rem; color:var(--ca-ink-faint); font-family:"SFMono-Regular",Consolas,monospace; }
+.ca-editor { font-family:"SFMono-Regular",Consolas,monospace; font-size:0.82rem; padding:12px 0; background:var(--ca-paper-2); overflow-x:auto; }
+.ca-ln { display:flex; align-items:flex-start; padding:0 14px; white-space:pre; }
+.ca-ln:hover { background:#f4f1ec; }
+.ca-ln .ca-num { width:30px; text-align:right; color:var(--ca-ink-faint); user-select:none; padding-right:14px; flex:none; }
+.ca-ln .ca-code { white-space:pre; }
+.ca-ln.ca-added { background:#eef4ec; }
+.ca-ln.ca-added .ca-num { color:var(--ca-ok); }
+.ca-y-key { color:var(--ca-y-key); }
+.ca-y-str { color:var(--ca-y-str); }
+.ca-y-num { color:var(--ca-y-num); }
+.ca-y-com { color:var(--ca-y-com); font-style:italic; }
+.ca-y-punct { color:var(--ca-y-punct); }
+
+/* inline "ghost" annotation where the toleration is missing */
+.ca-anno { display:flex; align-items:flex-start; padding:0 14px; margin:2px 0; }
+.ca-anno .ca-num { width:30px; flex:none; text-align:right; padding-right:14px; color:var(--ca-warn); user-select:none; }
+.ca-anno .ca-box { flex:1; background:var(--ca-warn-soft); border:1px dashed var(--ca-warn-line); border-radius:8px; padding:8px 11px; font-family:"Segoe UI",Arial,sans-serif; font-size:0.8rem; color:#7c531f; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.ca-anno .ca-box .ca-txt { flex:1; min-width:220px; }
+.ca-anno .ca-box code { font-family:"SFMono-Regular",Consolas,monospace; background:#fff; border:1px solid var(--ca-warn-line); border-radius:4px; padding:0 5px; font-size:0.9em; }
+.ca-insert { font:inherit; font-size:0.76rem; font-weight:600; background:#fff; border:1px solid var(--ca-warn-line); color:#7c531f; border-radius:8px; padding:5px 12px; cursor:pointer; white-space:nowrap; }
+.ca-insert:hover { background:#fffdf8; }
+
+/* assistant finding panel */
+.ca-finding { margin-top:16px; border-radius:12px; padding:14px 16px; font-size:0.86rem; border:1px solid var(--ca-warn-line); background:var(--ca-warn-soft); color:#7c531f; }
+.ca-finding.ca-ok { border-color:var(--ca-ok-line); background:var(--ca-ok-soft); color:#3f6b3a; }
+.ca-finding .ca-f-head { display:flex; align-items:center; gap:8px; font-weight:700; margin-bottom:5px; }
+.ca-finding .ca-badge { width:22px; height:22px; border-radius:6px; display:grid; place-items:center; font-weight:700; flex:none; background:#fff; border:1px solid currentColor; }
+.ca-finding .ca-event { font-family:"SFMono-Regular",Consolas,monospace; font-size:0.76rem; background:#fff; border:1px solid var(--ca-warn-line); border-radius:8px; padding:9px 11px; margin:9px 0; white-space:pre-wrap; color:#4a463f; }
+.ca-finding .ca-src { font-size:0.66rem; opacity:0.85; margin-top:8px; text-transform:uppercase; letter-spacing:0.05em; }
+
+/* footer */
+.ca-footer { margin-top:18px; display:flex; align-items:center; gap:12px; }
+.ca-deploy { font:inherit; font-size:0.86rem; font-weight:600; background:var(--ca-accent); color:#fff; border:none; border-radius:9px; padding:10px 20px; cursor:pointer; }
+.ca-deploy-msg { font-size:0.82rem; }
+.ca-footnote { font-size:0.76rem; color:var(--ca-ink-faint); margin-top:24px; text-align:center; }

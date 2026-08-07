@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Project Tensei — Learning for next time</title>
+<style>
+  :root {
+    --paper:        #f7f5f2;
+    --paper-2:      #fbfaf8;
+    --ink:          #23201c;
+    --ink-soft:     #6f6a63;
+    --ink-faint:    #a8a29a;
+    --line:         #e7e3dd;
+    --accent:       #b5763a;
+    --ai:           #4a6b6f;
+    --human:        #6a5a86;
+    --human-soft:   #ece7f2;
+    --ok:           #6f8f6a;
+    --ok-soft:      #e4ede2;
+    font-size: 16px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 60px 40px 90px; }
+
+  .context-line { font-size: 0.78rem; color: var(--ink-soft); display: flex; align-items: center; gap: 8px; margin-bottom: 22px; }
+  .check { width: 18px; height: 18px; border-radius: 50%; background: var(--ok-soft); color: var(--ok); display: grid; place-items: center; font-size: 0.72rem; font-weight: 700; }
+
+  .overline { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 10px; }
+
+  /* the calm card — a resting place, not an alert */
+  .learn {
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 24px 26px;
+  }
+  .learn-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .learn-title { font-size: 1.05rem; font-weight: 600; }
+  .once { font-size: 0.68rem; color: var(--ink-faint); white-space: nowrap; }
+
+  .from { display: flex; align-items: center; gap: 7px; margin-top: 12px; font-size: 0.78rem; color: var(--ink-soft); }
+  .avatar { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 0.62rem; font-weight: 700; color: #fff; }
+  .a-hum { background: var(--human); }
+  .a-ai  { background: var(--ai); }
+
+  .recap { margin: 18px 0 0; font-size: 0.95rem; }
+  .recap .label { font-size: 0.64rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: 4px; }
+
+  .tip { margin-top: 20px; }
+  .tip .label { font-size: 0.64rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: 6px; }
+  .tip p { margin: 0 0 12px; font-size: 0.95rem; }
+
+  .snippet {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 0.8rem;
+    background: #f1eee9;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    position: relative;
+    white-space: pre;
+    overflow-x: auto;
+    color: #4a463f;
+  }
+  .snippet .hl { background: #e6efe3; color: #4f7048; display: inline-block; border-radius: 3px; padding: 0 3px; }
+  .copy { position: absolute; top: 9px; right: 9px; font: inherit; font-size: 0.7rem; font-weight: 600; color: var(--ink-soft); background: var(--paper); border: 1px solid var(--line); border-radius: 7px; padding: 3px 9px; cursor: pointer; }
+  .copy:hover { color: var(--ink); }
+
+  /* optional guardrail — off by default */
+  .guard { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 18px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .guard .g-text { font-size: 0.9rem; }
+  .guard .g-text .g-title { font-weight: 600; }
+  .guard .g-text .g-sub { font-size: 0.76rem; color: var(--ink-soft); margin-top: 2px; }
+  .g-optional { font-size: 0.66rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* toggle */
+  .switch { position: relative; width: 46px; height: 26px; flex: none; cursor: pointer; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .track { position: absolute; inset: 0; background: #ddd8d0; border-radius: 999px; transition: background .18s ease; }
+  .thumb { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: #fff; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .18s ease; }
+  .switch input:checked + .track { background: var(--ok); }
+  .switch input:checked + .track .thumb { transform: translateX(20px); }
+
+  .guard-state { margin-top: 12px; font-size: 0.8rem; color: var(--ok); display: none; align-items: center; gap: 7px; }
+  .guard-state.on { display: flex; }
+  .guard-state .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+
+  .footer-actions { margin-top: 22px; display: flex; align-items: center; gap: 14px; }
+  .save-note { font-size: 0.78rem; color: var(--ink-soft); display: flex; align-items: center; gap: 7px; }
+  .save-note .pin { color: var(--human); }
+  .dismiss { font: inherit; font-size: 0.8rem; color: var(--ink-soft); background: transparent; border: none; cursor: pointer; margin-left: auto; text-decoration: underline; text-underline-offset: 3px; }
+  .dismiss:hover { color: var(--ink); }
+
+  .caption { text-align: center; font-size: 0.78rem; color: var(--ink-faint); margin-top: 26px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="context-line"><span class="check">✓</span> Issue resolved · payments-service is healthy again</div>
+
+    <p class="overline">Shows up once, when it's over</p>
+
+    <div class="learn">
+      <div class="learn-head">
+        <div class="learn-title">One thing for next time</div>
+        <div class="once">appears once · won't nag you</div>
+      </div>
+
+      <div class="from">
+        <span class="avatar a-hum">DK</span>
+        <span class="avatar a-ai">AI</span>
+        <span>From Devan and the AI, based on what just happened</span>
+      </div>
+
+      <div class="recap">
+        <span class="label">What happened</span>
+        A bulk find-and-replace changed a health-check setting (<code>timeoutSeconds</code> went 5 → 1), so the app restarted before it could warm up and crashed.
+      </div>
+
+      <div class="tip">
+        <span class="label">How to avoid it</span>
+        <p>Pin that setting in a values file so a find-and-replace can't touch it by accident.</p>
+        <div class="snippet"><button class="copy" type="button">Copy</button># values.yaml
+readinessProbe:
+  timeoutSeconds: <span class="hl">5</span>   # locked here — edit on purpose, not by accident</div>
+      </div>
+
+      <div class="guard">
+        <div class="g-text">
+          <div class="g-title">Want a safety net? <span class="g-optional">optional</span></div>
+          <div class="g-sub">Warn you before any future deploy changes <code>timeoutSeconds</code>. Off until you turn it on.</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="guardToggle" />
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+      </div>
+      <div class="guard-state" id="guardState"><span class="dot"></span> Safety net on — we'll flag this change before it ships.</div>
+
+      <div class="footer-actions">
+        <span class="save-note"><span class="pin">📌</span> Saved to your account, so you can find it later.</span>
+        <button class="dismiss" type="button">Got it, hide this</button>
+      </div>
+    </div>
+
+    <p class="caption">Calm by design: one tip, at the end, that you can act on or scroll past.</p>
+  </div>
+
+  <script>
+    // toggle the optional safety net
+    const toggle = document.getElementById('guardToggle');
+    const state = document.getElementById('guardState');
+    toggle.addEventListener('change', () => {
+      state.classList.toggle('on', toggle.checked);
+    });
+
+    // copy the snippet
+    document.querySelector('.copy').addEventListener('click', (e) => {
+      const text = 'readinessProbe:\n  timeoutSeconds: 5';
+      navigator.clipboard?.writeText(text);
+      e.target.textContent = 'Copied';
+      setTimeout(() => (e.target.textContent = 'Copy'), 1400);
+    });
+
+    // dismiss the card
+    document.querySelector('.dismiss').addEventListener('click', () => {
+      document.querySelector('.learn').style.display = 'none';
+    });
+  </script>
+</body>
+</html>

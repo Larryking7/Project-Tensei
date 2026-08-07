@@ -1,0 +1,12 @@
+# --- Large / binary artifacts ---
+*.mp4
+*.zip
+*.url
+
+# --- Amazon Confidential: official internal briefing (do not publish) ---
+Project Tensei — Intern Briefing & Project Guide*.pdf
+
+# --- Editor / OS cruft ---
+.vscode/
+.DS_Store
+Thumbs.db

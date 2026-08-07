@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Project Tensei — From error to advice</title>
+<style>
+  :root {
+    --paper:#f7f5f2; --paper-2:#fbfaf8; --ink:#23201c; --ink-soft:#6f6a63; --ink-faint:#a8a29a;
+    --line:#e7e3dd; --accent:#b5763a; --ai:#4a6b6f; --human:#6a5a86;
+    --bad:#9c4a34; --bad-soft:#f4e0da; --ok:#6f8f6a; --ok-soft:#e4ede2;
+    font-size:16px;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; }
+  body {
+    background:var(--paper); color:var(--ink);
+    font-family:"Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:720px; margin:0 auto; padding:40px 40px 90px; }
+
+  /* workspace header */
+  .head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .head .t { font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint); }
+  .head .n { font-size:0.9rem; font-weight:600; }
+
+  /* step tracker */
+  .steps { display:flex; gap:6px; margin:14px 0 20px; }
+  .steps .s { flex:1; height:4px; border-radius:999px; background:var(--line); transition:background .3s ease; }
+  .steps .s.done { background:var(--ai); }
+  .steps .s.active { background:var(--accent); }
+
+  /* the live status banner — changes as the story advances */
+  .banner {
+    border-radius:14px; padding:16px 18px; border:1px solid var(--line);
+    background:var(--paper-2); display:flex; align-items:center; gap:14px;
+    transition:all .3s ease;
+  }
+  .banner .icon { width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font-size:0.9rem; flex:none; }
+  .banner .b-title { font-weight:600; font-size:0.98rem; }
+  .banner .b-sub { font-size:0.82rem; color:var(--ink-soft); margin-top:2px; }
+  .banner.bad { background:var(--bad-soft); border-color:#e6c6bc; }
+  .banner.bad .icon { background:#eab6a6; color:var(--bad); }
+  .banner.bad .b-title { color:var(--bad); }
+  .banner.work .icon { background:#dfe7e7; }
+  .banner.ok { background:var(--ok-soft); border-color:#cadfc6; }
+  .banner.ok .icon { background:#bcd6b6; color:#3f6b3a; }
+  .spin { width:16px; height:16px; border-radius:50%; border:2px solid #cdd6d6; border-top-color:var(--ai); animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* running activity log */
+  .log { margin-top:14px; display:flex; flex-direction:column; gap:8px; }
+  .log .line { font-size:0.85rem; color:var(--ink-soft); display:flex; gap:9px; align-items:baseline; opacity:0; transform:translateY(4px); transition:all .35s ease; }
+  .log .line.show { opacity:1; transform:none; }
+  .log .stamp { font-size:0.7rem; color:var(--ink-faint); font-variant-numeric:tabular-nums; flex:none; width:42px; }
+  .log .who { font-weight:700; }
+  .log .who.ai { color:var(--ai); }
+  .log .who.hum { color:var(--human); }
+  .log .who.cust { color:#7a6f45; }
+
+  /* NOTE line — appears only when resolved. this is HOW the user reaches the advice. */
+  .note-chip {
+    margin-top:22px; display:none; width:100%; text-align:left;
+    background:var(--paper-2); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; cursor:pointer; font:inherit;
+    align-items:center; gap:12px; transition:border-color .2s ease, background .2s ease;
+    animation:rise .45s ease;
+  }
+  .note-chip.visible { display:flex; }
+  .note-chip:hover { border-color:var(--human); background:#fff; }
+  @keyframes rise { from { opacity:0; transform:translateY(8px);} to { opacity:1; transform:none; } }
+  .note-chip .badge { width:24px; height:24px; border-radius:50%; background:var(--human-soft,#ece7f2); color:var(--human); display:grid; place-items:center; font-size:0.8rem; flex:none; }
+  .note-chip .nc-text { flex:1; }
+  .note-chip .nc-title { font-size:0.9rem; font-weight:600; }
+  .note-chip .nc-sub { font-size:0.76rem; color:var(--ink-soft); margin-top:1px; }
+  .note-chip .chev { color:var(--ink-faint); font-size:1.1rem; }
+
+  /* the advice card, revealed on click */
+  .learn { display:none; margin-top:12px; background:var(--paper-2); border:1px solid var(--line); border-radius:14px; padding:22px 24px; animation:rise .4s ease; }
+  .learn.visible { display:block; }
+  .learn-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .learn-title { font-size:1.02rem; font-weight:600; }
+  .once { font-size:0.66rem; color:var(--ink-faint); white-space:nowrap; }
+  .from { display:flex; align-items:center; gap:7px; margin-top:12px; font-size:0.78rem; color:var(--ink-soft); }
+  .avatar { width:22px; height:22px; border-radius:50%; display:grid; place-items:center; font-size:0.6rem; font-weight:700; color:#fff; }
+  .a-hum { background:var(--human); } .a-ai { background:var(--ai); }
+  .label { font-size:0.64rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint); display:block; margin-bottom:4px; }
+  .recap { margin-top:18px; font-size:0.94rem; }
+  .recap code, .g-sub code { font-family:"SFMono-Regular",Consolas,monospace; background:#efece7; padding:0 5px; border-radius:4px; font-size:0.85rem; }
+  .tip { margin-top:18px; }
+  .tip p { margin:6px 0 12px; font-size:0.94rem; }
+  .snippet { font-family:"SFMono-Regular",Consolas,monospace; font-size:0.8rem; background:#f1eee9; border:1px solid var(--line); border-radius:10px; padding:12px 14px; white-space:pre; overflow-x:auto; color:#4a463f; }
+  .snippet .hl { background:#e6efe3; color:#4f7048; border-radius:3px; padding:0 3px; }
+  .guard { margin-top:20px; border-top:1px solid var(--line); padding-top:16px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+  .g-title { font-weight:600; font-size:0.9rem; }
+  .g-optional { font-size:0.64rem; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.1em; }
+  .g-sub { font-size:0.76rem; color:var(--ink-soft); margin-top:2px; }
+  .switch { position:relative; width:46px; height:26px; flex:none; cursor:pointer; }
+  .switch input { opacity:0; width:0; height:0; }
+  .track { position:absolute; inset:0; background:#ddd8d0; border-radius:999px; transition:background .18s ease; }
+  .thumb { position:absolute; top:3px; left:3px; width:20px; height:20px; background:#fff; border-radius:50%; box-shadow:0 1px 2px rgba(0,0,0,.2); transition:transform .18s ease; }
+  .switch input:checked + .track { background:var(--ok); }
+  .switch input:checked + .track .thumb { transform:translateX(20px); }
+
+  /* controls */
+  .controls { margin-top:30px; display:flex; align-items:center; gap:12px; }
+  .btn { font:inherit; font-size:0.85rem; font-weight:600; padding:9px 18px; border-radius:9px; cursor:pointer; border:1px solid transparent; }
+  .btn.primary { background:var(--accent); color:#fff; }
+  .btn.ghost { background:transparent; color:var(--ink-soft); border-color:var(--line); }
+  .btn:disabled { opacity:0.4; cursor:default; }
+  .hint { font-size:0.78rem; color:var(--ink-faint); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <span class="t">Support workspace</span>
+      <span class="n">payments-service · prod-eks-1</span>
+    </div>
+
+    <div class="steps">
+      <div class="s" data-step="0"></div>
+      <div class="s" data-step="1"></div>
+      <div class="s" data-step="2"></div>
+      <div class="s" data-step="3"></div>
+    </div>
+
+    <!-- status banner, updated by JS -->
+    <div class="banner" id="banner">
+      <div class="icon" id="bIcon">•</div>
+      <div>
+        <div class="b-title" id="bTitle">Deploy shipped at 14:32</div>
+        <div class="b-sub" id="bSub">Everything looks normal for now.</div>
+      </div>
+    </div>
+
+    <!-- activity log -->
+    <div class="log" id="log"></div>
+
+    <!-- HOW the user reaches the advice: a calm chip that appears only at the end -->
+    <button class="note-chip" id="noteChip" type="button">
+      <span class="badge">💡</span>
+      <span class="nc-text">
+        <span class="nc-title">1 note for next time</span>
+        <span class="nc-sub">Optional. Nothing to do now — open it whenever you like.</span>
+      </span>
+      <span class="chev">›</span>
+    </button>
+
+    <!-- the advice itself -->
+    <div class="learn" id="learn">
+      <div class="learn-head">
+        <div class="learn-title">One thing for next time</div>
+        <div class="once">appears once · won't nag you</div>
+      </div>
+      <div class="from">
+        <span class="avatar a-hum">DK</span>
+        <span class="avatar a-ai">AI</span>
+        <span>From Devan and the AI, based on what just happened</span>
+      </div>
+      <div class="recap">
+        <span class="label">What happened</span>
+        A bulk find-and-replace changed a health-check setting (<code>timeoutSeconds</code> went 5 → 1), so the app restarted before it could warm up and crashed.
+      </div>
+      <div class="tip">
+        <span class="label">How to avoid it</span>
+        <p>Pin that setting in a values file so a find-and-replace can't touch it by accident.</p>
+        <div class="snippet"># values.yaml
+readinessProbe:
+  timeoutSeconds: <span class="hl">5</span>   # locked here — edit on purpose, not by accident</div>
+      </div>
+      <div class="guard">
+        <div>
+          <div class="g-title">Want a safety net? <span class="g-optional">optional</span></div>
+          <div class="g-sub">Warn you before any future deploy changes <code>timeoutSeconds</code>. Off until you turn it on.</div>
+        </div>
+        <label class="switch"><input type="checkbox" /><span class="track"><span class="thumb"></span></span></label>
+      </div>
+    </div>
+
+    <!-- controls -->
+    <div class="controls">
+      <button class="btn primary" id="next" type="button">Start — the error hits ▸</button>
+      <button class="btn ghost" id="replay" type="button" style="display:none;">Replay</button>
+      <span class="hint" id="hint">Click through to see when the advice shows up.</span>
+    </div>
+  </div>
+
+  <script>
+    const banner = document.getElementById('banner');
+    const bIcon = document.getElementById('bIcon');
+    const bTitle = document.getElementById('bTitle');
+    const bSub = document.getElementById('bSub');
+    const log = document.getElementById('log');
+    const noteChip = document.getElementById('noteChip');
+    const learn = document.getElementById('learn');
+    const nextBtn = document.getElementById('next');
+    const replayBtn = document.getElementById('replay');
+    const hint = document.getElementById('hint');
+    const stepEls = [...document.querySelectorAll('.steps .s')];
+
+    // each stage: banner state + a log line + button label
+    const stages = [
+      {
+        cls:'bad', icon:'!', title:'Error — payments-service is crashing',
+        sub:'12 pod restarts in 4 minutes, right after the 14:32 deploy.',
+        logStamp:'14:36', logWho:'AI', whoCls:'ai',
+        logText:'Noticed the crash and started reading the logs. No tips right now — let\'s just fix it.',
+        btn:'Then the team digs in ▸'
+      },
+      {
+        cls:'work', icon:'', title:'Working it — AI and Devan, together',
+        sub:'AI on the crash, Devan checking the security role. Maya steering.',
+        logStamp:'14:39', logWho:'AI', whoCls:'ai',
+        logText:'Found it: a health-check timeout dropped from 5s to 1s. Pods die before they warm up.',
+        btn:'Apply the fix ▸'
+      },
+      {
+        cls:'work', icon:'', title:'Fix approved and rolling out',
+        sub:'Restoring the timeout to 5s. Restarting 3 pods — reversible.',
+        logStamp:'14:41', logWho:'Maya', whoCls:'cust',
+        logText:'Approved. Thanks both.',
+        btn:'It\'s resolved ▸'
+      },
+      {
+        cls:'ok', icon:'✓', title:'Resolved — payments-service is healthy',
+        sub:'All pods running. Nothing else needs your attention.',
+        logStamp:'14:43', logWho:'AI', whoCls:'ai',
+        logText:'All green. I left one small note for next time — no rush.',
+        btn:'Done'
+      }
+    ];
+
+    let step = -1;
+
+    function advance() {
+      step++;
+      if (step >= stages.length) return;
+      const s = stages[step];
+
+      banner.className = 'banner ' + s.cls;
+      bIcon.innerHTML = s.cls === 'work' ? '<span class="spin"></span>' : s.icon;
+      bTitle.textContent = s.title;
+      bSub.textContent = s.sub;
+
+      // step tracker
+      stepEls.forEach((el, i) => {
+        el.classList.toggle('done', i < step);
+        el.classList.toggle('active', i === step);
+      });
+
+      // add log line
+      const line = document.createElement('div');
+      line.className = 'line';
+      line.innerHTML = `<span class="stamp">${s.logStamp}</span><span><span class="who ${s.whoCls}">${s.logWho}</span> — ${s.logText}</span>`;
+      log.appendChild(line);
+      requestAnimationFrame(() => line.classList.add('show'));
+
+      nextBtn.textContent = s.btn;
+
+      // final stage: reveal the calm note chip (this is the "reach" moment)
+      if (step === stages.length - 1) {
+        nextBtn.style.display = 'none';
+        replayBtn.style.display = 'inline-block';
+        hint.textContent = 'See it? The advice waited until the end — now it\'s one optional note.';
+        setTimeout(() => noteChip.classList.add('visible'), 500);
+      }
+    }
+
+    nextBtn.addEventListener('click', advance);
+
+    // clicking the chip opens the advice
+    noteChip.addEventListener('click', () => {
+      learn.classList.add('visible');
+      noteChip.style.display = 'none';
+      learn.scrollIntoView({ behavior:'smooth', block:'center' });
+    });
+
+    replayBtn.addEventListener('click', () => {
+      step = -1;
+      log.innerHTML = '';
+      noteChip.classList.remove('visible');
+      noteChip.style.display = 'flex';
+      learn.classList.remove('visible');
+      banner.className = 'banner';
+      bIcon.textContent = '•';
+      bTitle.textContent = 'Deploy shipped at 14:32';
+      bSub.textContent = 'Everything looks normal for now.';
+      stepEls.forEach(el => el.classList.remove('done','active'));
+      nextBtn.style.display = 'inline-block';
+      nextBtn.textContent = 'Start — the error hits ▸';
+      replayBtn.style.display = 'none';
+      hint.textContent = 'Click through to see when the advice shows up.';
+    });
+  </script>
+</body>
+</html>
